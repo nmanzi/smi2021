@@ -43,7 +43,7 @@
 #include <media/v4l2-ctrls.h>
 #include <media/videobuf2-core.h>
 #include <media/videobuf2-vmalloc.h>
-#include <media/saa7115.h>
+#include <media/i2c/saa7115.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>

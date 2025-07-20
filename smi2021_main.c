@@ -319,10 +319,9 @@ static struct smi2021_buf *smi2021_get_buf(struct smi2021 *smi2021)
 static void smi2021_buf_done(struct smi2021 *smi2021)
 {
 	struct smi2021_buf *buf = smi2021->cur_buf;
-
-	v4l2_get_timestamp(&buf->vb.v4l2_buf.timestamp);
-	buf->vb.v4l2_buf.sequence = smi2021->sequence++;
-	buf->vb.v4l2_buf.field = V4L2_FIELD_INTERLACED;
+	
+	/* In modern kernels, timestamp is handled by vb2 layer */
+	buf->vb.timestamp = ktime_get_ns();
 
 	if (buf->pos < (SMI2021_BYTES_PER_LINE * smi2021->cur_height)) {
 		vb2_set_plane_payload(&buf->vb, 0, 0);
@@ -434,8 +433,8 @@ static void copy_video_block(struct smi2021 *smi2021, u8 *p, int size)
 	start_corr = 0;
 	len_copy = size;
 
-if (smi2021->skip_frame)
-	return;
+	if (smi2021->skip_frame)
+		return;
 
 	if (!buf) {
 		return;
@@ -968,7 +967,7 @@ static const struct smi2021_vid_input quad_input[] = {
 	},
 };
 
-const static struct i2c_algorithm smi2021_algo = {
+static const struct i2c_algorithm smi2021_algo = {
 	.master_xfer = smi2021_i2c_xfer,
 	.functionality = smi2021_i2c_functionality,
 };
@@ -1066,7 +1065,7 @@ static int smi2021_usb_probe(struct usb_interface *intf,
 	smi2021->i2c_adap = adap_template;
 
 	smi2021->i2c_adap.algo_data = smi2021;
-	strlcpy(smi2021->i2c_adap.name, "smi2021",
+	strscpy(smi2021->i2c_adap.name, "smi2021",
 				sizeof(smi2021->i2c_adap.name));
 
 	i2c_set_adapdata(&smi2021->i2c_adap, &smi2021->v4l2_dev);
@@ -1095,7 +1094,7 @@ static int smi2021_usb_probe(struct usb_interface *intf,
 
 	smi2021->gm7113c_info.addr = 0x4a;
 	smi2021->gm7113c_info.platform_data = &smi2021->gm7113c_platform_data;
-	strlcpy(smi2021->gm7113c_info.type, "gm7113c",
+	strscpy(smi2021->gm7113c_info.type, "gm7113c",
 					sizeof(smi2021->gm7113c_info.type));
 
 	smi2021->gm7113c_subdev = v4l2_i2c_new_subdev_board(&smi2021->v4l2_dev,

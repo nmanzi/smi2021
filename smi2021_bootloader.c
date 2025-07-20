@@ -168,7 +168,8 @@ int smi2021_bootloader_probe(struct usb_interface *intf,
 	struct smi2021_versions {
 		unsigned int	id;
 		const char	*name;
-	} static const hw_versions[3] = {
+	} ;
+	static const struct smi2021_versions hw_versions[3] = {
 		{
 			.id = 0x3f,
 			.name = SMI2021_3F_FIRMWARE,

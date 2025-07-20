@@ -48,8 +48,8 @@ static int vidioc_querycap(struct file *file, void *priv,
 {
 	struct smi2021 *smi2021 = video_drvdata(file);
 
-	strlcpy(cap->driver, "smi2021", sizeof(cap->driver));
-	strlcpy(cap->card, "smi2021", sizeof(cap->card));
+	strscpy(cap->driver, "smi2021", sizeof(cap->driver));
+	strscpy(cap->card, "smi2021", sizeof(cap->card));
 	usb_make_path(smi2021->udev, cap->bus_info, sizeof(cap->bus_info));
 	cap->device_caps = V4L2_CAP_VIDEO_CAPTURE |
 			   V4L2_CAP_STREAMING |
@@ -66,7 +66,7 @@ static int vidioc_enum_input(struct file *file, void *priv,
 	if (i->index >= smi2021->vid_input_count)
 		return -EINVAL;
 
-	strlcpy(i->name, smi2021->vid_inputs[i->index].name, sizeof(i->name));
+	strscpy(i->name, smi2021->vid_inputs[i->index].name, sizeof(i->name));
 	i->type = V4L2_INPUT_TYPE_CAMERA;
 	i->std = smi2021->vdev.tvnorms;
 	return 0;
@@ -78,7 +78,7 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
 	if (f->index != 0)
 		return -EINVAL;
 
-	strlcpy(f->description, "16 bpp YUY2, 4:2:2, packed",
+	strscpy(f->description, "16 bpp YUY2, 4:2:2, packed",
 					sizeof(f->description));
 	f->pixelformat = V4L2_PIX_FMT_UYVY;
 	return 0;
@@ -187,9 +187,8 @@ static const struct v4l2_ioctl_ops smi2021_ioctl_ops = {
  * Videobuf2 operations
  */
 static int queue_setup(struct vb2_queue *vq,
-				const struct v4l2_format *v4l2_fmt,
 				unsigned int *nbuffers, unsigned int *nplanes,
-				unsigned int sizes[], void *alloc_ctxs[])
+				unsigned int sizes[], struct device **alloc_devs)
 {
 	struct smi2021 *smi2021 = vb2_get_drv_priv(vq);
 	*nbuffers = clamp_t(unsigned int, *nbuffers, 4, 16);
@@ -266,6 +265,8 @@ static struct video_device v4l_template = {
 	.fops			= &smi2021_fops,
 	.ioctl_ops		= &smi2021_ioctl_ops,
 	.release		= video_device_release_empty,
+	.device_caps		= V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_READWRITE,
+	.vfl_dir		= VFL_DIR_RX,
 };
 
 /*****************************************************************************/
@@ -285,15 +286,13 @@ void smi2021_clear_queue(struct smi2021 *smi2021)
 				struct smi2021_buf, list);
 		list_del(&buf->list);
 		vb2_buffer_done(&buf->vb, VB2_BUF_STATE_ERROR);
-		dev_info(smi2021->dev, "buffer [%p/%d] aborted\n",
-				buf, buf->vb.v4l2_buf.index);
+		dev_info(smi2021->dev, "buffer [%p] aborted\n", buf);
 	}
 	/* It's important to clear current buffer */
 	if (smi2021->cur_buf) {
 		buf = smi2021->cur_buf;
 		vb2_buffer_done(&buf->vb, VB2_BUF_STATE_ERROR);
-		dev_info(smi2021->dev, "buffer [%p/%d] aborted\n",
-				buf, buf->vb.v4l2_buf.index);
+		dev_info(smi2021->dev, "buffer [%p] aborted\n", buf);
 	}
 	smi2021->cur_buf = NULL;
 	spin_unlock_irqrestore(&smi2021->buf_lock, flags);
@@ -342,7 +341,7 @@ int smi2021_video_register(struct smi2021 *smi2021)
 	smi2021->vdev.v4l2_dev = &smi2021->v4l2_dev;
 
 	video_set_drvdata(&smi2021->vdev, smi2021);
-	rc = video_register_device(&smi2021->vdev, VFL_TYPE_GRABBER, -1);
+	rc = video_register_device(&smi2021->vdev, VFL_TYPE_VIDEO, -1);
 	if (rc < 0) {
 		dev_err(smi2021->dev, "video_register_device failed (%d)\n",
 									rc);
